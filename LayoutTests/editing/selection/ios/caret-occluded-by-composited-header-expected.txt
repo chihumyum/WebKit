@@ -1,0 +1,12 @@
+
+Verifies that a composited header occludes the native caret hosted in another compositing layer.
+
+On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
+
+PASS () => caretRect.width > 0 && caretRect.height > 0 is true
+PASS () => isCaretView(viewBeforeShowingHeader) is true
+PASS () => headerRect.left <= caretCenter.x && caretCenter.x <= headerRect.right && headerRect.top <= caretCenter.y && caretCenter.y <= headerRect.bottom is true
+PASS () => isCaretView(viewAfterShowingHeader) is false
+PASS successfullyParsed is true
+
+TEST COMPLETE

@@ -1,0 +1,173 @@
+<!DOCTYPE html> <!-- webkit-test-runner [ useFlexibleViewport=true AsyncOverflowScrollingEnabled=true SelectionHonorsOverflowScrolling=true useHardwareKeyboardMode=false focusStartsInputSessionPolicy=allow ] -->
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="../../../resources/js-test.js"></script>
+<script src="../../../resources/ui-helper.js"></script>
+<style>
+html, body {
+    margin: 0;
+}
+
+#scroller {
+    position: absolute;
+    top: 150px;
+    left: 20px;
+    width: 300px;
+    height: 200px;
+    overflow: auto;
+}
+
+header,
+footer {
+    position: absolute;
+    z-index: 1;
+    left: 20px;
+    width: 300px;
+    height: 80px;
+    background: tomato;
+}
+
+header {
+    top: 70px;
+}
+
+footer {
+    top: 350px;
+}
+
+#content {
+    height: 500px;
+    padding-top: 80px;
+}
+
+.editable {
+    box-sizing: border-box;
+    width: 240px;
+    height: 32px;
+    border: 1px solid black;
+    padding: 3px;
+    outline: none;
+    font-size: 20px;
+}
+</style>
+<script>
+jsTestIsAsync = true;
+
+function isCaretView(viewDescription) {
+    return !!viewDescription && (viewDescription.includes("CursorAccessoryHostView") || viewDescription.includes("UITextSelection"));
+}
+
+addEventListener("load", async () => {
+    description("Verifies that a native caret following an accelerated transform remains clipped by its overflow scroller beneath noncomposited header and footer controls.");
+
+    const scroller = document.getElementById("scroller");
+    const content = document.getElementById("content");
+    const editable = document.getElementById("editable");
+
+    await UIHelper.setHardwareKeyboardAttached(false);
+    await UIHelper.renderingUpdate();
+    editable.focus();
+    await UIHelper.waitForKeyboardToShow();
+    await UIHelper.ensurePresentationUpdate();
+
+    const editableHeaderRectBefore = editable.getBoundingClientRect();
+    const headerCaretRectBefore = await UIHelper.getUICaretViewRect();
+    const headerCaretCenterBefore = UIHelper.midPointOfRect(headerCaretRectBefore);
+    shouldBeTrue(() => headerCaretRectBefore.width > 0 && headerCaretRectBefore.height > 0);
+
+    const scrollDelta = 140;
+    scroller.scrollTop = scrollDelta;
+    const headerAnimation = content.animate([
+        { transform: `translate3d(0, ${scrollDelta}px, 0)` },
+        { transform: "translate3d(0, 0, 0)" },
+    ], {
+        duration: 10000,
+        easing: "linear",
+        fill: "both",
+    });
+
+    await headerAnimation.ready;
+    await shouldBecomeEqual("internals.acceleratedAnimationsForElement(content).length", "1");
+    headerAnimation.pause();
+    headerAnimation.currentTime = 9500;
+    await UIHelper.ensurePresentationUpdate();
+
+    const editableHeaderRectAfter = editable.getBoundingClientRect();
+    const scrollerRect = scroller.getBoundingClientRect();
+    shouldBeTrue(() => editableHeaderRectAfter.bottom < scrollerRect.top);
+    shouldBeTrue(() => editableHeaderRectAfter.top > 0);
+
+    const headerCaretRectAfter = await UIHelper.getUICaretViewRect();
+    shouldBe(() => headerCaretRectAfter.width, "0");
+    shouldBe(() => headerCaretRectAfter.height, "0");
+
+    const expectedHeaderCaretCenterAfter = {
+        x: editableHeaderRectAfter.left + headerCaretCenterBefore.x - editableHeaderRectBefore.left,
+        y: editableHeaderRectAfter.top + headerCaretCenterBefore.y - editableHeaderRectBefore.top,
+    };
+    const frontmostHeaderView = await UIHelper.frontmostViewAtPoint(expectedHeaderCaretCenterAfter.x, expectedHeaderCaretCenterAfter.y);
+    shouldBeFalse(() => isCaretView(frontmostHeaderView));
+
+    headerAnimation.cancel();
+    await UIHelper.ensurePresentationUpdate();
+    await shouldBecomeEqual("internals.acceleratedAnimationsForElement(content).length", "0");
+
+    scroller.scrollTop = 0;
+    getSelection().collapse(editable, 0);
+    await UIHelper.ensurePresentationUpdate();
+
+    const editableFooterRectBefore = editable.getBoundingClientRect();
+    const footerCaretRectBefore = await UIHelper.getUICaretViewRect();
+    const footerCaretCenterBefore = UIHelper.midPointOfRect(footerCaretRectBefore);
+    shouldBeTrue(() => footerCaretRectBefore.width > 0 && footerCaretRectBefore.height > 0);
+
+    const footerAnimation = content.animate([
+        { transform: `translate3d(0, ${scrollDelta}px, 0)` },
+        { transform: "translate3d(0, 0, 0)" },
+    ], {
+        duration: 10000,
+        easing: "linear",
+        fill: "both",
+    });
+
+    await footerAnimation.ready;
+    await shouldBecomeEqual("internals.acceleratedAnimationsForElement(content).length", "1");
+    footerAnimation.pause();
+    footerAnimation.currentTime = 500;
+    await UIHelper.ensurePresentationUpdate();
+
+    const editableFooterRectAfter = editable.getBoundingClientRect();
+    shouldBeTrue(() => editableFooterRectAfter.top > scrollerRect.bottom);
+    shouldBeTrue(() => editableFooterRectAfter.bottom < innerHeight);
+
+    const footerCaretRectAfter = await UIHelper.getUICaretViewRect();
+    shouldBe(() => footerCaretRectAfter.width, "0");
+    shouldBe(() => footerCaretRectAfter.height, "0");
+
+    const expectedFooterCaretCenterAfter = {
+        x: editableFooterRectAfter.left + footerCaretCenterBefore.x - editableFooterRectBefore.left,
+        y: editableFooterRectAfter.top + footerCaretCenterBefore.y - editableFooterRectBefore.top,
+    };
+    const frontmostFooterView = await UIHelper.frontmostViewAtPoint(expectedFooterCaretCenterAfter.x, expectedFooterCaretCenterAfter.y);
+    shouldBeFalse(() => isCaretView(frontmostFooterView));
+
+    footerAnimation.cancel();
+    editable.blur();
+    await UIHelper.waitForKeyboardToHide();
+    finishJSTest();
+});
+</script>
+</head>
+<body>
+<header></header>
+<div id="scroller">
+    <div id="content">
+        <div id="editable" class="editable" contenteditable></div>
+    </div>
+</div>
+<footer></footer>
+<div id="description"></div>
+<div id="console"></div>
+</body>
+</html>

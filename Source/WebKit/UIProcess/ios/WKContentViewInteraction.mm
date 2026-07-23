@@ -14192,10 +14192,31 @@ inline static NSString *extendSelectionCommand(UITextLayoutDirection direction)
     if (page->waitingForPostLayoutEditorStateUpdateAfterFocusingElement())
         return _focusedElementInformation.interactionRect;
 
-    if (page->editorState().hasVisualData() && !page->editorState().visualData->selectionClipRect.isEmpty())
-        return page->editorState().visualData->selectionClipRect;
+    if (!page->editorState().hasVisualData())
+        return CGRectNull;
 
-    return CGRectNull;
+    auto& editorState = page->editorState();
+    auto& visualData = *editorState.visualData;
+    CGRect clipRect = visualData.selectionClipRect.isEmpty() ? CGRectNull : visualData.selectionClipRect;
+    if (editorState.selectionType != WebCore::SelectionType::Caret || !self.selectionHonorsOverflowScrolling || !visualData.enclosingScrollingNodeID)
+        return clipRect;
+
+    RetainPtr enclosingScroller = [self _scrollViewForScrollingNodeID:visualData.enclosingScrollingNodeID];
+    RetainPtr selectionContainer = [self _viewForLayerID:visualData.enclosingLayerID];
+    if (!enclosingScroller || selectionContainer == enclosingScroller || [enclosingScroller _wk_isAncestorOf:selectionContainer.get()])
+        return clipRect;
+
+    // Usually, hosting the native selection views inside the compositing view for the selection also
+    // places them under the corresponding WKChildScrollView, which supplies the overflow clip. An
+    // accelerated transform can instead make the enclosing graphics layer live outside that scroll
+    // view's UIView subtree. Preserve the transform-following container in that case, and supply the
+    // missing scrollport clip explicitly.
+    CGRect overflowClipRect = [enclosingScroller convertRect:enclosingScroller.get().bounds toView:self];
+    if (CGRectIsNull(clipRect))
+        return overflowClipRect;
+
+    CGRect intersection = CGRectIntersection(clipRect, overflowClipRect);
+    return CGRectIsNull(intersection) ? CGRectZero : intersection;
 }
 
 - (UIView *)selectionContainerViewBelowText

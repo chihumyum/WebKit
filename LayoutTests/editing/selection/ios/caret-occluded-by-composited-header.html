@@ -1,0 +1,79 @@
+<!DOCTYPE html> <!-- webkit-test-runner [ useFlexibleViewport=true SelectionHonorsOverflowScrolling=true useHardwareKeyboardMode=false focusStartsInputSessionPolicy=allow ] -->
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="../../../resources/js-test.js"></script>
+<script src="../../../resources/ui-helper.js"></script>
+<style>
+html, body {
+    margin: 0;
+}
+
+#input-container {
+    position: absolute;
+    top: 120px;
+    left: 40px;
+    transform: translateZ(0);
+}
+
+input {
+    font-size: 20px;
+}
+
+header {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    top: 100px;
+    left: 0;
+    width: 100%;
+    height: 80px;
+    background: tomato;
+    transform: translateZ(0);
+}
+</style>
+<script>
+jsTestIsAsync = true;
+
+function isCaretView(viewDescription) {
+    return !!viewDescription && (viewDescription.includes("CursorAccessoryHostView") || viewDescription.includes("UITextSelection"));
+}
+
+addEventListener("load", async () => {
+    description("Verifies that a composited header occludes the native caret hosted in another compositing layer.");
+
+    const input = document.querySelector("input");
+    const header = document.querySelector("header");
+
+    await UIHelper.setHardwareKeyboardAttached(false);
+    input.focus();
+    await UIHelper.waitForKeyboardToShow();
+    await UIHelper.ensurePresentationUpdate();
+
+    const caretRect = await UIHelper.getUICaretViewRect();
+    const caretCenter = UIHelper.midPointOfRect(caretRect);
+    window.viewBeforeShowingHeader = await UIHelper.frontmostViewAtPoint(caretCenter.x, caretCenter.y);
+    shouldBeTrue(() => caretRect.width > 0 && caretRect.height > 0);
+    shouldBeTrue(() => isCaretView(viewBeforeShowingHeader));
+
+    header.style.display = "block";
+    await UIHelper.ensurePresentationUpdate();
+
+    window.viewAfterShowingHeader = await UIHelper.frontmostViewAtPoint(caretCenter.x, caretCenter.y);
+    const headerRect = header.getBoundingClientRect();
+    shouldBeTrue(() => headerRect.left <= caretCenter.x && caretCenter.x <= headerRect.right && headerRect.top <= caretCenter.y && caretCenter.y <= headerRect.bottom);
+    shouldBeFalse(() => isCaretView(viewAfterShowingHeader));
+
+    input.blur();
+    await UIHelper.waitForKeyboardToHide();
+    finishJSTest();
+});
+</script>
+</head>
+<body>
+<div id="input-container"><input></div>
+<header></header>
+<div id="description"></div>
+<div id="console"></div>
+</body>
+</html>

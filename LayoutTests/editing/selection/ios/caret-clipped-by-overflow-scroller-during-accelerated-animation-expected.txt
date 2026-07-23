@@ -1,0 +1,22 @@
+Verifies that a native caret following an accelerated transform remains clipped by its overflow scroller beneath noncomposited header and footer controls.
+
+On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
+
+PASS () => headerCaretRectBefore.width > 0 && headerCaretRectBefore.height > 0 is true
+PASS internals.acceleratedAnimationsForElement(content).length became 1
+PASS () => editableHeaderRectAfter.bottom < scrollerRect.top is true
+PASS () => editableHeaderRectAfter.top > 0 is true
+PASS () => headerCaretRectAfter.width is 0
+PASS () => headerCaretRectAfter.height is 0
+PASS () => isCaretView(frontmostHeaderView) is false
+PASS internals.acceleratedAnimationsForElement(content).length became 0
+PASS () => footerCaretRectBefore.width > 0 && footerCaretRectBefore.height > 0 is true
+PASS internals.acceleratedAnimationsForElement(content).length became 1
+PASS () => editableFooterRectAfter.top > scrollerRect.bottom is true
+PASS () => editableFooterRectAfter.bottom < innerHeight is true
+PASS () => footerCaretRectAfter.width is 0
+PASS () => footerCaretRectAfter.height is 0
+PASS () => isCaretView(frontmostFooterView) is false
+PASS successfullyParsed is true
+
+TEST COMPLETE
