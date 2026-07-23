@@ -14215,8 +14215,7 @@ inline static NSString *extendSelectionCommand(UITextLayoutDirection direction)
     if (CGRectIsNull(clipRect))
         return overflowClipRect;
 
-    CGRect intersection = CGRectIntersection(clipRect, overflowClipRect);
-    return CGRectIsNull(intersection) ? CGRectZero : intersection;
+    return CGRectIntersection(clipRect, overflowClipRect);
 }
 
 - (UIView *)selectionContainerViewBelowText

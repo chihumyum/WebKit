@@ -43,13 +43,11 @@
 #import "Helpers/cocoa/WKWebViewConfigurationExtras.h"
 #import <WebCore/Color.h>
 #import <WebKit/WKFrameInfoPrivate.h>
-#import <WebKit/WKPreferencesPrivate.h>
 #import <WebKit/WKProcessPoolPrivate.h>
 #import <WebKit/WKWebViewConfigurationPrivate.h>
 #import <WebKit/WKWebViewPrivate.h>
 #import <WebKit/WKWebViewPrivateForTesting.h>
 #import <WebKit/WKWebViewPrivateForTestingIOS.h>
-#import <WebKit/_WKFeature.h>
 #import <WebKit/_WKProcessPoolConfiguration.h>
 #import <WebKitLegacy/WebEvent.h>
 #import <cmath>
@@ -750,42 +748,6 @@ TEST(KeyboardInputTests, DISABLED_SelectionClipRectsWhenPresentingInputView)
     EXPECT_EQ(9, selectionClipRect.origin.y);
     EXPECT_EQ(153, selectionClipRect.size.width);
     EXPECT_EQ(20, selectionClipRect.size.height);
-}
-
-TEST(KeyboardInputTests, SelectionClipRectOutsideOverflowScrollerIsEmptyButNotNull)
-{
-    RetainPtr configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
-    for (_WKFeature *feature in [WKPreferences _features]) {
-        if ([feature.key isEqualToString:@"SelectionHonorsOverflowScrolling"]) {
-            [configuration.get().preferences _setEnabled:YES forFeature:feature];
-            break;
-        }
-    }
-
-    RetainPtr webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 390, 797) configuration:configuration.get()]);
-    RetainPtr inputDelegate = adoptNS([[TestInputDelegate alloc] init]);
-    [inputDelegate setFocusStartsInputSessionPolicyHandler:[&] (WKWebView *, id<_WKFocusedElementInfo>) -> _WKFocusStartsInputSessionPolicy {
-        return _WKFocusStartsInputSessionPolicyAllow;
-    }];
-    [webView _setInputDelegate:inputDelegate.get()];
-
-    [webView synchronouslyLoadHTMLString:@"<meta name='viewport' content='width=device-width, initial-scale=1'>"
-        "<style>html,body{margin:0}#scroller{position:absolute;top:150px;left:20px;width:300px;height:200px;overflow:auto}#content{box-sizing:border-box;height:500px;padding-top:80px}input{display:block;box-sizing:border-box;width:240px;height:32px;margin:0;font-size:20px}</style>"
-        "<div id='scroller'><div id='content'><input id='input' value='ab'></div></div>"
-        "<script>async function moveInputOutsideScroller(){scroller.scrollTop=140;window.animation=content.animate([{transform:'translate3d(0, 140px, 0)'},{transform:'translate3d(0, 0, 0)'}],{duration:10000,easing:'linear',fill:'both'});await animation.ready;animation.pause();animation.currentTime=9500;await new Promise(requestAnimationFrame);input.setSelectionRange(0,0);await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);window.didMoveInput=true}</script>"];
-    [webView evaluateJavaScriptAndWaitForInputSessionToChange:@"input.focus(); input.setSelectionRange(2, 2)"];
-    [webView objectByEvaluatingJavaScript:@"moveInputOutsideScroller(); true"];
-
-    bool didMoveInput = false;
-    for (unsigned attempt = 0; attempt < 30 && !didMoveInput; ++attempt) {
-        [webView waitForNextPresentationUpdate];
-        didMoveInput = [[webView objectByEvaluatingJavaScript:@"window.didMoveInput"] boolValue];
-    }
-    EXPECT_TRUE(didMoveInput);
-
-    auto selectionClipRect = [webView selectionClipRect];
-    EXPECT_TRUE(CGRectIsEmpty(selectionClipRect));
-    EXPECT_FALSE(CGRectIsNull(selectionClipRect));
 }
 
 TEST(KeyboardInputTests, TestWebViewAdditionalContextForStrongPasswordAssistance)
