@@ -1,0 +1,129 @@
+<!DOCTYPE html> <!-- webkit-test-runner [ useFlexibleViewport=true AsyncOverflowScrollingEnabled=true SelectionHonorsOverflowScrolling=true useHardwareKeyboardMode=false focusStartsInputSessionPolicy=allow ] -->
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="../../../resources/js-test.js"></script>
+<script src="../../../resources/ui-helper.js"></script>
+<style>
+html, body {
+    margin: 0;
+}
+
+#scroller {
+    position: absolute;
+    top: 80px;
+    left: 20px;
+    width: 300px;
+    height: 240px;
+    overflow: auto;
+}
+
+#content {
+    height: 500px;
+}
+
+input {
+    margin-top: 120px;
+    font-size: 20px;
+}
+</style>
+<script>
+jsTestIsAsync = true;
+
+function caretOffsetFromInput(caretRect, inputRect) {
+    return {
+        left: caretRect.left - inputRect.left,
+        top: caretRect.top - inputRect.top,
+    };
+}
+
+addEventListener("load", async () => {
+    description("Verifies that the UI caret remains aligned with a focused input while an ancestor runs an accelerated transform animation after a scrollTop change.");
+
+    const scroller = document.getElementById("scroller");
+    const content = document.getElementById("content");
+    const input = document.querySelector("input");
+
+    await UIHelper.setHardwareKeyboardAttached(false);
+    input.focus();
+    await UIHelper.waitForKeyboardToShow();
+    await UIHelper.ensurePresentationUpdate();
+
+    const inputRectBefore = input.getBoundingClientRect();
+    const caretRectBefore = UIHelper.roundRectToDevicePixel(await UIHelper.getUICaretViewRect());
+    const caretOffsetBefore = caretOffsetFromInput(caretRectBefore, inputRectBefore);
+
+    scroller.scrollTop = 80;
+    const animation = content.animate([
+        { transform: "translate3d(0, 80px, 0)" },
+        { transform: "translate3d(0, 0, 0)" },
+    ], {
+        duration: 10000,
+        easing: "linear",
+        fill: "both",
+    });
+
+    await animation.ready;
+    await shouldBecomeEqual("internals.acceleratedAnimationsForElement(content).length", "1");
+    animation.pause();
+    animation.currentTime = 5000;
+    await UIHelper.ensurePresentationUpdate();
+
+    const inputRectDuring = input.getBoundingClientRect();
+    const caretRectDuring = UIHelper.roundRectToDevicePixel(await UIHelper.getUICaretViewRect());
+    const caretOffsetDuring = caretOffsetFromInput(caretRectDuring, inputRectDuring);
+
+    if (Math.abs(inputRectDuring.top - inputRectBefore.top) > 20)
+        testPassed("The input moved after scrollTop and the transform animation were applied");
+    else
+        testFailed("The input did not move enough to exercise the test");
+
+    if (Math.abs(caretOffsetDuring.left - caretOffsetBefore.left) <= 1 && Math.abs(caretOffsetDuring.top - caretOffsetBefore.top) <= 1)
+        testPassed("The UI caret remained aligned with the focused input");
+    else
+        testFailed(`The UI caret moved relative to the input: before ${JSON.stringify(caretOffsetBefore)}, during ${JSON.stringify(caretOffsetDuring)}`);
+
+    animation.cancel();
+    await UIHelper.ensurePresentationUpdate();
+    await shouldBecomeEqual("internals.acceleratedAnimationsForElement(content).length", "0");
+
+    const inputRectAfterCancel = input.getBoundingClientRect();
+    const caretRectAfterCancel = UIHelper.roundRectToDevicePixel(await UIHelper.getUICaretViewRect());
+    const caretOffsetAfterCancel = caretOffsetFromInput(caretRectAfterCancel, inputRectAfterCancel);
+
+    if (Math.abs(inputRectAfterCancel.top - inputRectDuring.top) > 20)
+        testPassed("The input moved when the accelerated animation was canceled");
+    else
+        testFailed("Canceling the accelerated animation did not move the input enough to exercise the test");
+
+    if (Math.abs(inputRectAfterCancel.top - (inputRectBefore.top - scroller.scrollTop)) <= 1)
+        testPassed("Canceling removed the accelerated transform and restored the input's layout-relative position");
+    else
+        testFailed(`The input did not return to its expected position after canceling: expected ${inputRectBefore.top - scroller.scrollTop}, got ${inputRectAfterCancel.top}`);
+
+    if (caretRectAfterCancel.width > 0 && caretRectAfterCancel.height > 0)
+        testPassed("The UI caret remained visible after canceling the accelerated animation");
+    else
+        testFailed("The UI caret disappeared after canceling the accelerated animation");
+
+    if (Math.abs(caretOffsetAfterCancel.left - caretOffsetBefore.left) <= 1 && Math.abs(caretOffsetAfterCancel.top - caretOffsetBefore.top) <= 1)
+        testPassed("The UI caret remained aligned after canceling the accelerated animation");
+    else
+        testFailed(`The UI caret moved relative to the input after canceling: before ${JSON.stringify(caretOffsetBefore)}, after ${JSON.stringify(caretOffsetAfterCancel)}`);
+
+    input.blur();
+    await UIHelper.waitForKeyboardToHide();
+    finishJSTest();
+});
+</script>
+</head>
+<body>
+<div id="scroller">
+    <div id="content">
+        <input>
+    </div>
+</div>
+<div id="description"></div>
+<div id="console"></div>
+</body>
+</html>

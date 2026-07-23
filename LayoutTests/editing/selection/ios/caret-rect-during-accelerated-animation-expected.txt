@@ -1,0 +1,16 @@
+
+Verifies that the UI caret remains aligned with a focused input while an ancestor runs an accelerated transform animation after a scrollTop change.
+
+On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
+
+PASS internals.acceleratedAnimationsForElement(content).length became 1
+PASS The input moved after scrollTop and the transform animation were applied
+PASS The UI caret remained aligned with the focused input
+PASS internals.acceleratedAnimationsForElement(content).length became 0
+PASS The input moved when the accelerated animation was canceled
+PASS Canceling removed the accelerated transform and restored the input's layout-relative position
+PASS The UI caret remained visible after canceling the accelerated animation
+PASS The UI caret remained aligned after canceling the accelerated animation
+PASS successfullyParsed is true
+
+TEST COMPLETE

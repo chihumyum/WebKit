@@ -267,6 +267,7 @@ private:
     void postAccessibilityFrameLoadingEventNotification(WebCore::AccessibilityObject*, WebCore::AXLoadingEvent) final;
 #endif
 
+    void acceleratedAnimationDidBecomeReadyForElement(const WebCore::Element&) final;
     void animationDidFinishForElement(const WebCore::Element&) final;
 
     WebCore::DisplayRefreshMonitorFactory* displayRefreshMonitorFactory() const final;

@@ -784,6 +784,7 @@ public:
     std::optional<WebCore::PointerCharacteristics> NODELETE pointerCharacteristicsOfPrimaryPointingDevice() const;
     OptionSet<WebCore::PointerCharacteristics> pointerCharacteristicsOfAllAvailablePointingDevices() const;
 
+    void acceleratedAnimationDidBecomeReadyForElement(const WebCore::Element&);
     void animationDidFinishForElement(const WebCore::Element&);
 
     const String& overrideContentSecurityPolicy() const LIFETIME_BOUND { return m_overrideContentSecurityPolicy; }
@@ -2266,7 +2267,8 @@ private:
     bool applyAutocorrectionInternal(const String& correction, const String& originalText, bool isCandidate);
     void clearSelectionAfterTapIfNeeded();
     void scheduleLayoutViewportHeightExpansionUpdate();
-    void scheduleEditorStateUpdateAfterAnimationIfNeeded(const WebCore::Element&);
+    enum class ShouldUpdateCaretRect : bool { No, Yes };
+    void scheduleEditorStateUpdateForAnimationIfNeeded(const WebCore::Element&, ShouldUpdateCaretRect);
     void computeEnclosingLayerID(EditorState&, const WebCore::VisibleSelection&) const;
     bool mainFramePlugInDefersScalingToViewport() const;
     bool mainFramePlugInRejectsZeroViewLayoutSizeUpdates() const;

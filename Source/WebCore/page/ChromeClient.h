@@ -708,6 +708,7 @@ public:
     virtual bool shouldAllowScriptAccess(const URL&, const WebCore::SecurityOrigin&, ScriptTrackingPrivacyCategory) const { return true; }
     virtual bool requiresConsistentPrivacyQuirkForDomain(const URL&) const { return false; };
 
+    virtual void acceleratedAnimationDidBecomeReadyForElement(const Element&) { }
     virtual void animationDidFinishForElement(const Element&) { }
 
 #if PLATFORM(MAC)

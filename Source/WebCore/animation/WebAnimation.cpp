@@ -1594,8 +1594,17 @@ void WebAnimation::tick()
     if (!isEffectInvalidationSuspended() && m_effect) {
         protect(m_effect)->animationDidTick();
         if (RefPtr keyframeEffect = this->keyframeEffect()) {
-            if (wasPending && !pending())
+            if (wasPending && !pending()) {
                 keyframeEffect->animationBecameReady();
+                if (keyframeEffect->canBeAccelerated()) {
+                    // Starting an accelerated animation can create a new composited layer for the target.
+                    // Let clients refresh UI whose coordinate space depends on that layer.
+                    if (RefPtr target = keyframeEffect->target()) {
+                        if (RefPtr page = target->document().page())
+                            page->chrome().client().acceleratedAnimationDidBecomeReadyForElement(*target);
+                    }
+                }
+            }
         }
     }
 }

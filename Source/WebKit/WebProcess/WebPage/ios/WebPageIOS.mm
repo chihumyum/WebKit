@@ -4758,9 +4758,24 @@ void WebPage::requestPasswordForQuickLookDocumentInMainFrame(const String& fileN
 
 #endif
 
+void WebPage::acceleratedAnimationDidBecomeReadyForElement(const Element& animatedElement)
+{
+    if (!m_page->settings().selectionHonorsOverflowScrolling())
+        return;
+
+    RefPtr frame = m_page->focusController().focusedOrMainFrame();
+    if (!frame || !frame->selection().selection().isCaret())
+        return;
+
+    // The accelerated animation may have created a new composited layer. Refresh the
+    // editor state so that the UI process can reparent its selection views, but do not
+    // force an absolute caret geometry update while the transform is still progressing.
+    scheduleEditorStateUpdateForAnimationIfNeeded(animatedElement, ShouldUpdateCaretRect::No);
+}
+
 void WebPage::animationDidFinishForElement(const Element& animatedElement)
 {
-    scheduleEditorStateUpdateAfterAnimationIfNeeded(animatedElement);
+    scheduleEditorStateUpdateForAnimationIfNeeded(animatedElement, ShouldUpdateCaretRect::Yes);
 
     if (!m_page->settings().layoutViewportHeightExpansionFactor())
         return;
@@ -4772,7 +4787,7 @@ void WebPage::animationDidFinishForElement(const Element& animatedElement)
         scheduleLayoutViewportHeightExpansionUpdate();
 }
 
-void WebPage::scheduleEditorStateUpdateAfterAnimationIfNeeded(const Element& animatedElement)
+void WebPage::scheduleEditorStateUpdateForAnimationIfNeeded(const Element& animatedElement, ShouldUpdateCaretRect shouldUpdateCaretRect)
 {
     RefPtr frame = m_page->focusController().focusedOrMainFrame();
     if (!frame)
@@ -4789,7 +4804,8 @@ void WebPage::scheduleEditorStateUpdateAfterAnimationIfNeeded(const Element& ani
         if (!animatedElement.isShadowIncludingInclusiveAncestorOf(container))
             return false;
 
-        frame->selection().setCaretRectNeedsUpdate();
+        if (shouldUpdateCaretRect == ShouldUpdateCaretRect::Yes)
+            frame->selection().setCaretRectNeedsUpdate();
         scheduleFullEditorStateUpdate();
         return true;
     };

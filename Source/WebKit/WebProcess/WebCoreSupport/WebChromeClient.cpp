@@ -2175,6 +2175,12 @@ void WebChromeClient::postAccessibilityFrameLoadingEventNotification(WebCore::Ac
 }
 #endif
 
+void WebChromeClient::acceleratedAnimationDidBecomeReadyForElement(const Element& element)
+{
+    if (RefPtr page = m_page.get())
+        page->acceleratedAnimationDidBecomeReadyForElement(element);
+}
+
 void WebChromeClient::animationDidFinishForElement(const Element& element)
 {
     if (RefPtr page = m_page.get())

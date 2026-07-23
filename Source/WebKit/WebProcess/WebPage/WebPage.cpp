@@ -9860,6 +9860,10 @@ void WebPage::showMediaControlsContextMenu(FloatRect&& targetFrame, Vector<Media
 
 #if !PLATFORM(IOS_FAMILY)
 
+void WebPage::acceleratedAnimationDidBecomeReadyForElement(const WebCore::Element&)
+{
+}
+
 void WebPage::animationDidFinishForElement(const WebCore::Element&)
 {
 }
