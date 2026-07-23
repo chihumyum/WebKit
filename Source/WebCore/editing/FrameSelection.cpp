@@ -1919,11 +1919,22 @@ bool FrameSelection::recomputeCaretRect()
 
     IntRect oldAbsCaretBounds = m_absCaretBounds;
     bool isInsideFixed;
-    m_absCaretBounds = absoluteBoundsForLocalCaretRect(rendererForCaretPainting(caretNode.get()), newRect, &isInsideFixed);
+    auto* caretPainter = rendererForCaretPainting(caretNode.get());
+    m_absCaretBounds = absoluteBoundsForLocalCaretRect(caretPainter, newRect, &isInsideFixed);
     m_caretInsidePositionFixed = isInsideFixed;
 
-    if (m_absCaretBoundsDirty && m_selection.isCaret()) // We should be able to always assert this condition.
-        ASSERT(m_absCaretBounds == m_selection.visibleStart().absoluteCaretBounds());
+#if ASSERT_ENABLED
+    if (m_absCaretBoundsDirty && m_selection.isCaret() && !newRect.isEmpty()) {
+        // Verify that FrameSelection and VisiblePosition provide the same inputs to their
+        // shared absolute-coordinate conversion. Do not perform that conversion twice here:
+        // an accelerated transform uses its live current time for every conversion, so two
+        // otherwise equivalent conversions can legitimately differ as the animation progresses.
+        RenderBlock* visiblePositionCaretPainter = nullptr;
+        auto visiblePositionLocalCaretRect = localCaretRectInRendererForCaretPainting(m_selection.visibleStart(), visiblePositionCaretPainter);
+        ASSERT(caretPainter == visiblePositionCaretPainter);
+        ASSERT(newRect == visiblePositionLocalCaretRect);
+    }
+#endif
 
     m_absCaretBoundsDirty = false;
 

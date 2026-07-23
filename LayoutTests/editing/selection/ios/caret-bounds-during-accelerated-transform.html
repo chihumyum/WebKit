@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="../../../resources/js-test.js"></script>
+<style>
+#scroller {
+    width: 200px;
+    height: 100px;
+    overflow: scroll;
+}
+
+#animated {
+    height: 300px;
+}
+</style>
+</head>
+<body>
+<div id="scroller">
+    <div id="animated">
+        <div id="editable" contenteditable>caret</div>
+    </div>
+</div>
+<div id="description"></div>
+<div id="console"></div>
+<script>
+jsTestIsAsync = true;
+
+addEventListener("load", async () => {
+    description("Recomputing caret bounds while an accelerated transform is progressing must not compare geometry sampled at two different animation times.");
+
+    const scroller = document.getElementById("scroller");
+    const animated = document.getElementById("animated");
+    const editable = document.getElementById("editable");
+
+    editable.focus();
+    getSelection().collapse(editable.firstChild, 2);
+    internals.absoluteCaretBounds();
+
+    const animation = animated.animate([
+        { transform: "translate3d(0, 0, 0)" },
+        { transform: "translate3d(100000px, 0, 0)" },
+    ], {
+        duration: 1000,
+        easing: "linear",
+        fill: "both",
+        iterations: Infinity,
+    });
+
+    await animation.ready;
+    await shouldBecomeEqual("internals.acceleratedAnimationsForElement(animated).length", "1");
+
+    for (let i = 0; i < 100; ++i) {
+        scroller.scrollTop = i % 2;
+        internals.absoluteCaretBounds();
+    }
+    testPassed("Caret bounds were repeatedly recomputed without crashing");
+
+    animation.cancel();
+    editable.textContent = "";
+    finishJSTest();
+});
+</script>
+</body>
+</html>

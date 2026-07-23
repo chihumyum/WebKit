@@ -1,0 +1,9 @@
+Recomputing caret bounds while an accelerated transform is progressing must not compare geometry sampled at two different animation times.
+
+On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
+
+PASS internals.acceleratedAnimationsForElement(animated).length became 1
+PASS Caret bounds were repeatedly recomputed without crashing
+PASS successfullyParsed is true
+
+TEST COMPLETE
